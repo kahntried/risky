@@ -21,6 +21,22 @@ def get_theme_css(theme):
             margin-bottom: 0.5rem;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
+        .username-input {
+            background: rgba(0,0,0,0.4);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        .leaderboard {
+            background: rgba(0,0,0,0.4);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            max-height: 300px;
+            overflow-y: auto;
+        }
         .card {
             display: inline-block;
             background: white;
@@ -147,7 +163,7 @@ def get_theme_css(theme):
                 background: rgba(255, 215, 0, 0.2);
                 border: 2px solid #FFD700;
             }}
-            .stats-container, .sidebar-info, .theme-selector {{
+            .stats-container, .sidebar-info, .theme-selector, .username-input, .leaderboard {{
                 border: 1px solid rgba(255, 215, 0, 0.3);
                 color: #FFD700;
             }}
@@ -173,7 +189,7 @@ def get_theme_css(theme):
                 background: rgba(255, 215, 0, 0.2);
                 border: 2px solid #FFD700;
             }}
-            .stats-container, .sidebar-info, .theme-selector {{
+            .stats-container, .sidebar-info, .theme-selector, .username-input, .leaderboard {{
                 border: 1px solid rgba(255, 215, 0, 0.3);
                 color: #FFD700;
             }}
@@ -199,7 +215,7 @@ def get_theme_css(theme):
                 background: rgba(230, 230, 250, 0.2);
                 border: 2px solid #E6E6FA;
             }}
-            .stats-container, .sidebar-info, .theme-selector {{
+            .stats-container, .sidebar-info, .theme-selector, .username-input, .leaderboard {{
                 border: 1px solid rgba(230, 230, 250, 0.3);
                 color: #E6E6FA;
             }}
@@ -225,7 +241,7 @@ def get_theme_css(theme):
                 background: rgba(135, 206, 235, 0.2);
                 border: 2px solid #87CEEB;
             }}
-            .stats-container, .sidebar-info, .theme-selector {{
+            .stats-container, .sidebar-info, .theme-selector, .username-input, .leaderboard {{
                 border: 1px solid rgba(135, 206, 235, 0.3);
                 color: #87CEEB;
             }}
@@ -237,6 +253,41 @@ def get_theme_css(theme):
 
     else:
         return get_theme_css("Classic Green")
+
+
+# LocalStorage functions
+def save_player_data():
+    """Save player data to localStorage via JavaScript"""
+    if 'username' in st.session_state and st.session_state.username:
+        player_data = {
+            'username': st.session_state.username,
+            'balance': st.session_state.game.balance,
+            'stats': st.session_state.stats,
+            'last_played': time.time()
+        }
+
+        js_code = f"""
+        <script>
+        var playerData = {str(player_data).replace("'", '"')};
+        localStorage.setItem('blackjack_' + playerData.username, JSON.stringify(playerData));
+
+        var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
+        var existingIndex = leaderboard.findIndex(p => p.username === playerData.username);
+
+        if (existingIndex >= 0) {{
+            leaderboard[existingIndex] = playerData;
+        }} else {{
+            leaderboard.push(playerData);
+        }}
+
+        leaderboard.sort((a, b) => b.stats.total_winnings - a.stats.total_winnings);
+        leaderboard = leaderboard.slice(0, 10);
+
+        localStorage.setItem('blackjack_leaderboard', JSON.stringify(leaderboard));
+        </script>
+        """
+        return js_code
+    return ""
 
 
 class BlackjackGame:
@@ -379,9 +430,7 @@ class BlackjackGame:
 
     def split_hand(self):
         if self.can_split():
-            # Deduct additional bet for the split (same as original bet)
             self.balance -= self.current_bet
-            # Double the current bet to reflect total amount at risk
             self.current_bet *= 2
             self.has_split = True
 
@@ -422,7 +471,6 @@ class BlackjackGame:
             hand_value = self.calculate_hand_value(current_hand)
 
             if hand_value > 21:
-                # Bust
                 if self.has_split:
                     self.check_split_hand_completion()
                 else:
@@ -430,7 +478,6 @@ class BlackjackGame:
                     self.game_result = "bust"
                     self.balance -= self.current_bet
             elif hand_value == 21:
-                # Automatic stand on 21
                 if self.has_split:
                     self.check_split_hand_completion()
                 else:
@@ -463,14 +510,12 @@ class BlackjackGame:
             losses = 0
             pushes = 0
 
-            # Each split hand bets half of the total current_bet
             bet_per_hand = self.current_bet // 2
 
             for i, hand in enumerate(self.split_hands):
                 hand_value = self.calculate_hand_value(hand)
 
                 if hand_value > 21:
-                    # Hand already busted - money already deducted
                     losses += 1
                 elif dealer_value > 21:
                     total_winnings += bet_per_hand
@@ -526,16 +571,32 @@ def display_hand(hand: List[Tuple[str, str]], hide_first: bool = False, title: s
     return cards_html
 
 
-# Initialize theme and game
+# Initialize session state
 if 'theme' not in st.session_state:
     st.session_state.theme = "Classic Green"
+
+if 'username' not in st.session_state:
+    st.session_state.username = ""
 
 if 'game' not in st.session_state:
     st.session_state.game = BlackjackGame()
     st.session_state.stats = {'wins': 0, 'losses': 0, 'pushes': 0, 'total_winnings': 0}
+    st.session_state.starting_balance = 5000
+
+if 'stats_updated' not in st.session_state:
+    st.session_state.stats_updated = False
 
 # Apply theme CSS
 st.markdown(get_theme_css(st.session_state.theme), unsafe_allow_html=True)
+
+# Auto-save player data
+if st.session_state.username:
+    balance_change = st.session_state.game.balance - st.session_state.starting_balance
+    st.session_state.stats['total_winnings'] = balance_change
+
+    save_js = save_player_data()
+    if save_js:
+        st.markdown(save_js, unsafe_allow_html=True)
 
 game = st.session_state.game
 
@@ -545,8 +606,28 @@ left_col, main_col = st.columns([1, 2])
 with left_col:
     st.markdown('<h1 class="main-header">🃏 BLACKJACK 🃏</h1>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="balance-display">💰 ${game.balance:,}</div>', unsafe_allow_html=True)
+    # Username input
+    st.markdown('<div class="username-input">', unsafe_allow_html=True)
+    st.markdown("**👤 Player Name**")
+    username = st.text_input("", value=st.session_state.username, placeholder="Enter your name...",
+                             key="username_input", label_visibility="collapsed")
 
+    if username != st.session_state.username:
+        if username:
+            st.session_state.username = username
+        else:
+            st.session_state.username = ""
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Show username and balance
+    if st.session_state.username:
+        st.markdown(f'<div class="balance-display">💰 {st.session_state.username}: ${game.balance:,}</div>',
+                    unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="balance-display">💰 ${game.balance:,}</div>', unsafe_allow_html=True)
+
+    # Theme selector
     st.markdown('<div class="theme-selector">', unsafe_allow_html=True)
     st.markdown("**🎨 Choose Theme**")
     theme_options = ["Classic Green", "Vegas Gold", "Royal Purple", "Midnight Blue"]
@@ -562,6 +643,7 @@ with left_col:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Game controls
     st.markdown("### 🎮 Game Controls")
     if st.button("🎮 New Game", key="new_game", use_container_width=True):
         st.session_state.game.reset_game()
@@ -570,14 +652,21 @@ with left_col:
     if st.button("💰 Reset Balance", key="reset_balance", use_container_width=True):
         st.session_state.game.balance = 5000
         st.session_state.game.reset_game()
+        st.session_state.starting_balance = 5000
         st.rerun()
 
     if st.button("📊 Reset Stats", key="reset_stats", use_container_width=True):
         st.session_state.stats = {'wins': 0, 'losses': 0, 'pushes': 0, 'total_winnings': 0}
+        st.session_state.starting_balance = st.session_state.game.balance
         st.rerun()
 
+    # Stats display
     st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
-    st.markdown("**📈 STATS**")
+    if st.session_state.username:
+        st.markdown(f"**📈 {st.session_state.username}'s STATS**")
+    else:
+        st.markdown("**📈 YOUR STATS**")
+
     stats = st.session_state.stats
     total_games = stats['wins'] + stats['losses'] + stats['pushes']
     if total_games > 0:
@@ -586,15 +675,68 @@ with left_col:
         st.markdown(f"**W:** {stats['wins']} **L:** {stats['losses']} **P:** {stats['pushes']}")
         st.markdown(f"**Win Rate:** {win_rate:.0f}%")
 
-        total_winnings = stats['total_winnings']
-        color = "#32CD32" if total_winnings >= 0 else "#FF6B6B"
-        symbol = "📈" if total_winnings >= 0 else "📉"
-        st.markdown(f"**Net:** <span style='color: {color};'>{symbol} ${total_winnings:,}</span>",
+        balance_change = game.balance - st.session_state.starting_balance
+        color = "#32CD32" if balance_change >= 0 else "#FF6B6B"
+        symbol = "📈" if balance_change >= 0 else "📉"
+        st.markdown(f"**Net:** <span style='color: {color};'>{symbol} ${balance_change:,}</span>",
                     unsafe_allow_html=True)
     else:
         st.markdown("Ready to play!")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Leaderboard
+    if st.session_state.username:
+        st.markdown('<div class="leaderboard">', unsafe_allow_html=True)
+        st.markdown("**🏆 TOP PLAYERS**")
+        st.markdown('<div id="leaderboard-content">Loading leaderboard...</div>', unsafe_allow_html=True)
+
+        leaderboard_js = """
+        <script>
+        var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
+        var content = '';
+
+        if (leaderboard.length > 0) {
+            leaderboard.forEach((player, index) => {
+                var rank = index + 1;
+                var emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
+                var winnings = player.stats.total_winnings;
+                var winningsColor = winnings >= 0 ? '#32CD32' : '#FF6B6B';
+                var games = player.stats.wins + player.stats.losses + player.stats.pushes;
+
+                content += `<div style="margin: 5px 0; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1);">
+                    <strong>${emoji} ${player.username}</strong><br>
+                    <small style="color: ${winningsColor};">$${winnings.toLocaleString()} • ${games} games</small>
+                </div>`;
+            });
+        } else {
+            content = '<div style="text-align: center; opacity: 0.7;">No players yet!</div>';
+        }
+
+        document.getElementById('leaderboard-content').innerHTML = content;
+        </script>
+        """
+        st.markdown(leaderboard_js, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Clear data button
+    if st.session_state.username:
+        if st.button("🗑️ Clear My Data", key="clear_data", use_container_width=True):
+            clear_js = f"""
+            <script>
+            localStorage.removeItem('blackjack_{st.session_state.username}');
+            var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
+            leaderboard = leaderboard.filter(p => p.username !== '{st.session_state.username}');
+            localStorage.setItem('blackjack_leaderboard', JSON.stringify(leaderboard));
+            </script>
+            """
+            st.markdown(clear_js, unsafe_allow_html=True)
+            st.session_state.username = ""
+            st.session_state.game = BlackjackGame()
+            st.session_state.stats = {'wins': 0, 'losses': 0, 'pushes': 0, 'total_winnings': 0}
+            st.session_state.starting_balance = 5000
+            st.rerun()
+
+    # Instructions
     st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
     st.markdown("**🎯 How to Play**")
     st.markdown("""
@@ -736,56 +878,70 @@ with main_col:
             unsafe_allow_html=True)
 
     if game.game_over:
+        if 'stats_updated' not in st.session_state or not st.session_state.stats_updated:
+            if game.game_result == "player_blackjack":
+                st.session_state.stats['wins'] += 1
+                winnings = int(game.current_bet * 1.5)
+                st.session_state.stats['total_winnings'] += winnings
+            elif game.game_result == "dealer_blackjack":
+                st.session_state.stats['losses'] += 1
+                st.session_state.stats['total_winnings'] -= game.current_bet
+            elif game.game_result == "push_blackjack":
+                st.session_state.stats['pushes'] += 1
+            elif game.game_result == "bust":
+                st.session_state.stats['losses'] += 1
+                st.session_state.stats['total_winnings'] -= game.current_bet
+            elif game.game_result == "dealer_bust":
+                st.session_state.stats['wins'] += 1
+                st.session_state.stats['total_winnings'] += game.current_bet
+            elif game.game_result == "win":
+                st.session_state.stats['wins'] += 1
+                st.session_state.stats['total_winnings'] += game.current_bet
+            elif game.game_result == "lose":
+                st.session_state.stats['losses'] += 1
+                st.session_state.stats['total_winnings'] -= game.current_bet
+            elif game.game_result == "push":
+                st.session_state.stats['pushes'] += 1
+
+            st.session_state.stats_updated = True
+
+        # Display results
         if game.game_result == "player_blackjack":
             st.markdown('<div class="win-message">🎉 BLACKJACK! 🎉</div>', unsafe_allow_html=True)
             winnings = int(game.current_bet * 1.5)
             st.markdown(
                 f'<div style="text-align: center; color: #32CD32; font-size: 1.2rem;">21! +${winnings} (3:2 payout)</div>',
                 unsafe_allow_html=True)
-            st.session_state.stats['wins'] += 1
-            st.session_state.stats['total_winnings'] += winnings
         elif game.game_result == "dealer_blackjack":
             st.markdown('<div class="lose-message">💔 DEALER BLACKJACK</div>', unsafe_allow_html=True)
             st.markdown(f'<div style="text-align: center; color: #FF6B6B;">Dealer 21! -${game.current_bet}</div>',
                         unsafe_allow_html=True)
-            st.session_state.stats['losses'] += 1
-            st.session_state.stats['total_winnings'] -= game.current_bet
         elif game.game_result == "push_blackjack":
             st.markdown(
                 '<div style="font-size: 1.5rem; font-weight: bold; color: #FFA500; text-align: center;">🤝 BOTH BLACKJACK!</div>',
                 unsafe_allow_html=True)
             st.markdown(f'<div style="text-align: center; color: #FFA500;">Push! +$0</div>', unsafe_allow_html=True)
-            st.session_state.stats['pushes'] += 1
         elif game.game_result == "bust":
             st.markdown('<div class="lose-message">💥 BUST!</div>', unsafe_allow_html=True)
             st.markdown(f'<div style="text-align: center; color: #FF6B6B;">-${game.current_bet}</div>',
                         unsafe_allow_html=True)
-            st.session_state.stats['losses'] += 1
-            st.session_state.stats['total_winnings'] -= game.current_bet
         elif game.game_result == "dealer_bust":
             st.markdown('<div class="win-message">🎉 DEALER BUSTS!</div>', unsafe_allow_html=True)
             st.markdown(f'<div style="text-align: center; color: #32CD32;">+${game.current_bet}</div>',
                         unsafe_allow_html=True)
-            st.session_state.stats['wins'] += 1
-            st.session_state.stats['total_winnings'] += game.current_bet
         elif game.game_result == "win":
             st.markdown('<div class="win-message">🎉 YOU WIN!</div>', unsafe_allow_html=True)
             st.markdown(f'<div style="text-align: center; color: #32CD32;">+${game.current_bet}</div>',
                         unsafe_allow_html=True)
-            st.session_state.stats['wins'] += 1
-            st.session_state.stats['total_winnings'] += game.current_bet
         elif game.game_result == "lose":
             st.markdown('<div class="lose-message">😞 YOU LOSE</div>', unsafe_allow_html=True)
             st.markdown(f'<div style="text-align: center; color: #FF6B6B;">-${game.current_bet}</div>',
                         unsafe_allow_html=True)
-            st.session_state.stats['losses'] += 1
-            st.session_state.stats['total_winnings'] -= game.current_bet
         elif game.game_result == "push":
             st.markdown(
                 '<div style="font-size: 1.5rem; font-weight: bold; color: #FFA500; text-align: center;">🤝 PUSH!</div>',
                 unsafe_allow_html=True)
             st.markdown(f'<div style="text-align: center; color: #FFA500;">+$0</div>', unsafe_allow_html=True)
-            st.session_state.stats['pushes'] += 1
 
         if game.balance < 50:
             st.markdown(
@@ -795,6 +951,7 @@ with main_col:
         st.markdown('<div class="game-action-buttons">', unsafe_allow_html=True)
         if st.button("🎮 DEAL NEW HAND", key="new_hand", use_container_width=True):
             st.session_state.game.reset_game()
+            st.session_state.stats_updated = False
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
