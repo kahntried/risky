@@ -379,7 +379,10 @@ class BlackjackGame:
 
     def split_hand(self):
         if self.can_split():
+            # Deduct additional bet for the split (same as original bet)
             self.balance -= self.current_bet
+            # Double the current bet to reflect total amount at risk
+            self.current_bet *= 2
             self.has_split = True
 
             card1 = self.player_hand[0]
@@ -416,14 +419,22 @@ class BlackjackGame:
         if not self.game_over:
             current_hand = self.get_current_hand()
             current_hand.append(self.deal_card())
+            hand_value = self.calculate_hand_value(current_hand)
 
-            if self.calculate_hand_value(current_hand) > 21:
+            if hand_value > 21:
+                # Bust
                 if self.has_split:
                     self.check_split_hand_completion()
                 else:
                     self.game_over = True
                     self.game_result = "bust"
                     self.balance -= self.current_bet
+            elif hand_value == 21:
+                # Automatic stand on 21
+                if self.has_split:
+                    self.check_split_hand_completion()
+                else:
+                    self.player_stand()
 
     def player_stand(self):
         if self.has_split:
@@ -452,20 +463,23 @@ class BlackjackGame:
             losses = 0
             pushes = 0
 
+            # Each split hand bets half of the total current_bet
+            bet_per_hand = self.current_bet // 2
+
             for i, hand in enumerate(self.split_hands):
                 hand_value = self.calculate_hand_value(hand)
-                bet_amount = self.current_bet // 2
 
                 if hand_value > 21:
+                    # Hand already busted - money already deducted
                     losses += 1
                 elif dealer_value > 21:
-                    total_winnings += bet_amount
+                    total_winnings += bet_per_hand
                     wins += 1
                 elif hand_value > dealer_value:
-                    total_winnings += bet_amount
+                    total_winnings += bet_per_hand
                     wins += 1
                 elif hand_value < dealer_value:
-                    total_winnings -= bet_amount
+                    total_winnings -= bet_per_hand
                     losses += 1
                 else:
                     pushes += 1
@@ -634,7 +648,12 @@ with main_col:
             st.stop()
     else:
         if game.current_bet > 0:
-            st.markdown(f'<div class="current-bet">Current Bet: ${game.current_bet}</div>', unsafe_allow_html=True)
+            if game.has_split:
+                bet_per_hand = game.current_bet // 2
+                st.markdown(f'<div class="current-bet">Total Bet: ${game.current_bet} (${bet_per_hand} per hand)</div>',
+                            unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="current-bet">Current Bet: ${game.current_bet}</div>', unsafe_allow_html=True)
 
     if game.bet_placed and not game.player_hand and not game.dealer_hand:
         game.deal_initial_cards()
