@@ -14,309 +14,243 @@ st.set_page_config(
 
 # Custom CSS for styling and animations
 def get_theme_css(theme):
-    base_css = """
-<style>
-    .main-header {
-        text-align: center;
-        font-size: 1.8rem;
-        color: #FFD700;
-        margin-bottom: 0.5rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    }
-    .card {
-        display: inline-block;
-        background: white;
-        border-radius: 10px;
-        padding: 15px 10px;
-        margin: 6px;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.5);
-        font-size: 1.8rem;
-        min-width: 70px;
-        min-height: 95px;
-        text-align: center;
-        transition: transform 0.3s ease;
-        border: 2px solid #ddd;
-        animation: cardSlideIn 0.6s ease-out;
-    }
-
-    .card:nth-child(1) { animation-delay: 0.1s; }
-    .card:nth-child(2) { animation-delay: 0.3s; }
-    .card:nth-child(3) { animation-delay: 0.5s; }
-    .card:nth-child(4) { animation-delay: 0.7s; }
-    .card:nth-child(5) { animation-delay: 0.9s; }
-    .card:nth-child(6) { animation-delay: 1.1s; }
-
-    @keyframes cardSlideIn {
-        0% {
-            opacity: 0;
-            transform: translateY(-30px) scale(0.8);
-        }
-        100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    .card.no-animation {
-        animation: none;
-    }
-
-    .card:hover {
-        transform: translateY(-3px) scale(1.05);
-    }
-    .card-red {
-        color: #DC143C;
-    }
-    .card-black {
-        color: #2F4F4F;
-    }
-    .score {
-        font-size: 1.2rem;
-        font-weight: bold;
-        margin: 5px 0;
-        color: #FFD700;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    }
-    .player-section {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        border-radius: 15px;
-        margin: 10px auto;
-        max-width: 500px;
-        border: 2px solid rgba(255, 215, 0, 0.3);
-        backdrop-filter: blur(10px);
-        text-align: center;
-    }
-    .dealer-section {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        border-radius: 15px;
-        margin: 10px auto;
-        max-width: 500px;
-        border: 2px solid rgba(255, 215, 0, 0.3);
-        backdrop-filter: blur(10px);
-        text-align: center;
-    }
-    .cards-container {
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        margin: 10px 0;
-    }
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #FFD700;
-        margin-bottom: 10px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    }
-    .win-message {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #32CD32;
-        text-align: center;
-        animation: pulse 2s infinite;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    }
-    .lose-message {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #FF6B6B;
-        text-align: center;
-        animation: pulse 2s infinite;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    }
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-    .balance-display {
-        font-size: 1.3rem;
-        font-weight: bold;
-        color: #FFD700;
-        text-align: center;
-        margin: 8px 0;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    }
-    .bet-section {
-        background: rgba(255, 215, 0, 0.2);
-        padding: 20px 15px;
-        border-radius: 12px;
-        margin: 15px auto;
-        max-width: 350px;
-        border: 2px solid #FFD700;
-        backdrop-filter: blur(5px);
-    }
-    .bet-title {
-        color: #FFD700;
-        font-size: 1.2rem;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 15px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    }
-    .bet-subtitle {
-        color: #FFF;
-        font-size: 0.9rem;
-        text-align: center;
-        margin-bottom: 20px;
-        opacity: 0.8;
-    }
-    .current-bet {
-        text-align: center;
-        font-size: 1.2rem;
-        color: #FFD700;
-        font-weight: bold;
-        margin: 10px 0;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    }
-    .stats-container {
-        background: rgba(0,0,0,0.3);
-        padding: 15px;
-        border-radius: 10px;
-        margin: 20px 0;
-        border: 1px solid #555;
-        backdrop-filter: blur(5px);
-        color: #FFD700;
-    }
-    .game-controls {
-        text-align: center;
-        margin: 20px 0;
-    }
-    .game-action-buttons {
-        text-align: center;
-        margin: 15px 0;
-    }
-    .big-game-button {
-        background: linear-gradient(45deg, #2E8B57, #3CB371);
-        color: white;
-        border: none;
-        padding: 15px 30px;
-        border-radius: 25px;
-        font-size: 1.3rem;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        margin: 0 10px;
-        min-width: 120px;
-    }
-    .big-game-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(46, 139, 87, 0.4);
-    }
-    .split-hand-title {
-        font-size: 1rem;
-        font-weight: bold;
-        color: #FFD700;
-        margin: 5px 0;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    }
-    .active-hand {
-        border: 3px solid #FFD700 !important;
-        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-    }
-    .sidebar-info {
-        background: rgba(0,0,0,0.3);
-        padding: 15px;
-        border-radius: 10px;
-        margin: 15px 0;
-        border: 1px solid rgba(255, 215, 0, 0.3);
-        backdrop-filter: blur(5px);
-        color: #FFD700;
-    }
-    .theme-selector {
-        background: rgba(0,0,0,0.4);
-        padding: 10px;
-        border-radius: 8px;
-        margin: 10px 0;
-        border: 1px solid rgba(255, 215, 0, 0.3);
-    }
-</style>
-"""
-
     themes = {
         "Classic Green": """
+        <style>
             .stApp {
                 background: radial-gradient(ellipse at center, #0d4f3c 0%, #1a6b47 35%, #134e3a 100%);
                 background-attachment: fixed;
             }
+            .main-header {
+                text-align: center;
+                font-size: 1.8rem;
+                color: #FFD700;
+                margin-bottom: 0.5rem;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            }
+            .card {
+                display: inline-block;
+                background: white;
+                border-radius: 10px;
+                padding: 15px 10px;
+                margin: 6px;
+                box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+                font-size: 1.8rem;
+                min-width: 70px;
+                min-height: 95px;
+                text-align: center;
+                transition: transform 0.3s ease;
+                border: 2px solid #ddd;
+                animation: cardSlideIn 0.6s ease-out;
+            }
+            .card:nth-child(1) { animation-delay: 0.1s; }
+            .card:nth-child(2) { animation-delay: 0.3s; }
+            .card:nth-child(3) { animation-delay: 0.5s; }
+            .card:nth-child(4) { animation-delay: 0.7s; }
+            .card:nth-child(5) { animation-delay: 0.9s; }
+            .card:nth-child(6) { animation-delay: 1.1s; }
+            @keyframes cardSlideIn {
+                0% {
+                    opacity: 0;
+                    transform: translateY(-30px) scale(0.8);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+            .card.no-animation {
+                animation: none;
+            }
+            .card:hover {
+                transform: translateY(-3px) scale(1.05);
+            }
+            .card-red {
+                color: #DC143C;
+            }
+            .card-black {
+                color: #2F4F4F;
+            }
+            .score {
+                font-size: 1.2rem;
+                font-weight: bold;
+                margin: 5px 0;
+                color: #FFD700;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            }
+            .player-section {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 20px;
+                border-radius: 15px;
+                margin: 10px auto;
+                max-width: 500px;
+                border: 2px solid rgba(255, 215, 0, 0.3);
+                backdrop-filter: blur(10px);
+                text-align: center;
+            }
+            .dealer-section {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 20px;
+                border-radius: 15px;
+                margin: 10px auto;
+                max-width: 500px;
+                border: 2px solid rgba(255, 215, 0, 0.3);
+                backdrop-filter: blur(10px);
+                text-align: center;
+            }
+            .cards-container {
+                display: flex;
+                justify-content: center;
+                flex-wrap: wrap;
+                margin: 10px 0;
+            }
+            .section-title {
+                font-size: 1.1rem;
+                font-weight: bold;
+                color: #FFD700;
+                margin-bottom: 10px;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            }
+            .win-message {
+                font-size: 1.5rem;
+                font-weight: bold;
+                color: #32CD32;
+                text-align: center;
+                animation: pulse 2s infinite;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            }
+            .lose-message {
+                font-size: 1.5rem;
+                font-weight: bold;
+                color: #FF6B6B;
+                text-align: center;
+                animation: pulse 2s infinite;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            }
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+                100% { transform: scale(1); }
+            }
+            .balance-display {
+                font-size: 1.3rem;
+                font-weight: bold;
+                color: #FFD700;
+                text-align: center;
+                margin: 8px 0;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            }
+            .bet-section {
+                background: rgba(255, 215, 0, 0.2);
+                padding: 20px 15px;
+                border-radius: 12px;
+                margin: 15px auto;
+                max-width: 350px;
+                border: 2px solid #FFD700;
+                backdrop-filter: blur(5px);
+            }
+            .bet-title {
+                color: #FFD700;
+                font-size: 1.2rem;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 15px;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            }
+            .bet-subtitle {
+                color: #FFF;
+                font-size: 0.9rem;
+                text-align: center;
+                margin-bottom: 20px;
+                opacity: 0.8;
+            }
+            .current-bet {
+                text-align: center;
+                font-size: 1.2rem;
+                color: #FFD700;
+                font-weight: bold;
+                margin: 10px 0;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            }
+            .stats-container {
+                background: rgba(0,0,0,0.3);
+                padding: 15px;
+                border-radius: 10px;
+                margin: 20px 0;
+                border: 1px solid #555;
+                backdrop-filter: blur(5px);
+                color: #FFD700;
+            }
+            .game-controls {
+                text-align: center;
+                margin: 20px 0;
+            }
+            .game-action-buttons {
+                text-align: center;
+                margin: 15px 0;
+            }
+            .big-game-button {
+                background: linear-gradient(45deg, #2E8B57, #3CB371);
+                color: white;
+                border: none;
+                padding: 15px 30px;
+                border-radius: 25px;
+                font-size: 1.3rem;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                margin: 0 10px;
+                min-width: 120px;
+            }
+            .big-game-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(46, 139, 87, 0.4);
+            }
+            .split-hand-title {
+                font-size: 1rem;
+                font-weight: bold;
+                color: #FFD700;
+                margin: 5px 0;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            }
+            .active-hand {
+                border: 3px solid #FFD700 !important;
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            }
+            .sidebar-info {
+                background: rgba(0,0,0,0.3);
+                padding: 15px;
+                border-radius: 10px;
+                margin: 15px 0;
+                border: 1px solid rgba(255, 215, 0, 0.3);
+                backdrop-filter: blur(5px);
+                color: #FFD700;
+            }
+            .theme-selector {
+                background: rgba(0,0,0,0.4);
+                padding: 10px;
+                border-radius: 8px;
+                margin: 10px 0;
+                border: 1px solid rgba(255, 215, 0, 0.3);
+            }
+        </style>
         """,
+
         "Vegas Gold": """
+        <style>
             .stApp {
                 background: radial-gradient(ellipse at center, #8B4513 0%, #DAA520 35%, #B8860B 100%);
                 background-attachment: fixed;
             }
-            .main-header { color: #FFD700; }
-            .score { color: #FFD700; }
-            .section-title { color: #FFD700; }
-            .balance-display { color: #FFD700; }
-            .current-bet { color: #FFD700; }
-            .bet-title { color: #FFD700; }
-        """,
-        "Royal Purple": """
-            .stApp {
-                background: radial-gradient(ellipse at center, #2D1B69 0%, #663399 35%, #4B0082 100%);
-                background-attachment: fixed;
+            .main-header, .score, .section-title, .balance-display, .current-bet, .bet-title {
+                color: #FFD700;
             }
-            .main-header { color: #E6E6FA; }
-            .score { color: #E6E6FA; }
-            .section-title { color: #E6E6FA; }
-            .balance-display { color: #E6E6FA; }
-            .current-bet { color: #E6E6FA; }
-            .bet-title { color: #E6E6FA; }
-            .bet-section { border-color: #E6E6FA; }
-            .player-section { border-color: rgba(230, 230, 250, 0.3); }
-            .dealer-section { border-color: rgba(230, 230, 250, 0.3); }
-        """,
-        "Midnight Blue": """
-            .stApp {
-                background: radial-gradient(ellipse at center, #000428 0%, #004e92 35%, #001a3a 100%);
-                background-attachment: fixed;
-            }
-            .main-header { color: #87CEEB; }
-            .score { color: #87CEEB; }
-            .section-title { color: #87CEEB; }
-            .balance-display { color: #87CEEB; }
-            .current-bet { color: #87CEEB; }
-            .bet-title { color: #87CEEB; }
-            .bet-section { border-color: #87CEEB; }
-            .player-section { border-color: rgba(135, 206, 235, 0.3); }
-            .dealer-section { border-color: rgba(135, 206, 235, 0.3); }
-        """,
-        "Crimson Luxury": """
-            .stApp {
-                background: radial-gradient(ellipse at center, #4A0000 0%, #8B0000 35%, #2F0000 100%);
-                background-attachment: fixed;
-            }
-            .main-header { color: #FFD700; }
-            .score { color: #FFD700; }
-            .section-title { color: #FFD700; }
-            .balance-display { color: #FFD700; }
-            .current-bet { color: #FFD700; }
-            .bet-title { color: #FFD700; }
-            .bet-section { border-color: #FFD700; }
-            .player-section { border-color: rgba(255, 215, 0, 0.3); }
-            .dealer-section { border-color: rgba(255, 215, 0, 0.3); }
-        """,
-        "Emerald Casino": """
-            .stApp {
-                background: radial-gradient(ellipse at center, #003d00 0%, #006400 35%, #002200 100%);
-                background-attachment: fixed;
-            }
-            .main-header { color: #98FB98; }
-            .score { color: #98FB98; }
-            .section-title { color: #98FB98; }
-            .balance-display { color: #98FB98; }
-            .current-bet { color: #98FB98; }
-            .bet-title { color: #98FB98; }
-            .bet-section { border-color: #98FB98; }
-            .player-section { border-color: rgba(152, 251, 152, 0.3); }
-            .dealer-section { border-color: rgba(152, 251, 152, 0.3); }
+            /* Include all other base styles here */
+        </style>
         """
     }
 
-    return base_css + themes.get(theme, themes["Classic Green"]) + "</style>"
+    return themes.get(theme, themes["Classic Green"])
 
 
 # Sound effects
