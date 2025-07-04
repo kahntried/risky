@@ -266,28 +266,88 @@ def save_player_data():
             'last_played': time.time()
         }
 
+        # Use JSON.stringify to ensure proper formatting
         js_code = f"""
         <script>
-        var playerData = {str(player_data).replace("'", '"')};
-        localStorage.setItem('blackjack_' + playerData.username, JSON.stringify(playerData));
+        (function() {{
+            var playerData = {{
+                username: "{st.session_state.username}",
+                balance: {st.session_state.game.balance},
+                stats: {{
+                    wins: {st.session_state.stats['wins']},
+                    losses: {st.session_state.stats['losses']},
+                    pushes: {st.session_state.stats['pushes']},
+                    total_winnings: {st.session_state.stats['total_winnings']}
+                }},
+                last_played: {time.time()}
+            }};
 
-        var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
-        var existingIndex = leaderboard.findIndex(p => p.username === playerData.username);
+            localStorage.setItem('blackjack_' + playerData.username, JSON.stringify(playerData));
 
-        if (existingIndex >= 0) {{
-            leaderboard[existingIndex] = playerData;
-        }} else {{
-            leaderboard.push(playerData);
-        }}
+            var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
+            var existingIndex = leaderboard.findIndex(p => p.username === playerData.username);
 
-        leaderboard.sort((a, b) => b.stats.total_winnings - a.stats.total_winnings);
-        leaderboard = leaderboard.slice(0, 10);
+            if (existingIndex >= 0) {{
+                leaderboard[existingIndex] = playerData;
+            }} else {{
+                leaderboard.push(playerData);
+            }}
 
-        localStorage.setItem('blackjack_leaderboard', JSON.stringify(leaderboard));
+            leaderboard.sort((a, b) => b.stats.total_winnings - a.stats.total_winnings);
+            leaderboard = leaderboard.slice(0, 10);
+
+            localStorage.setItem('blackjack_leaderboard', JSON.stringify(leaderboard));
+
+            // Force reload of leaderboard display
+            window.dispatchEvent(new Event('storage'));
+        }})();
         </script>
         """
         return js_code
     return ""
+
+
+def load_leaderboard_display():
+    """Generate JavaScript to display and auto-update leaderboard"""
+    return """
+    <script>
+    function updateLeaderboard() {
+        var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
+        var content = '';
+
+        if (leaderboard.length > 0) {
+            leaderboard.forEach((player, index) => {
+                var rank = index + 1;
+                var emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
+                var winnings = player.stats.total_winnings;
+                var winningsColor = winnings >= 0 ? '#32CD32' : '#FF6B6B';
+                var games = player.stats.wins + player.stats.losses + player.stats.pushes;
+
+                content += `<div style="margin: 5px 0; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1);">
+                    <strong>${emoji} ${player.username}</strong><br>
+                    <small style="color: ${winningsColor};">$${winnings.toLocaleString()} • ${games} games</small>
+                </div>`;
+            });
+        } else {
+            content = '<div style="text-align: center; opacity: 0.7;">No players yet!</div>';
+        }
+
+        var element = document.getElementById('leaderboard-content');
+        if (element) {
+            element.innerHTML = content;
+        }
+    }
+
+    // Update on load
+    updateLeaderboard();
+
+    // Update when storage changes
+    window.addEventListener('storage', updateLeaderboard);
+
+    // Poll for updates every 2 seconds
+    setInterval(updateLeaderboard, 2000);
+    </script>
+    """
 
 
 class BlackjackGame:
@@ -586,17 +646,22 @@ if 'game' not in st.session_state:
 if 'stats_updated' not in st.session_state:
     st.session_state.stats_updated = False
 
+if 'last_save_time' not in st.session_state:
+    st.session_state.last_save_time = 0
+
 # Apply theme CSS
 st.markdown(get_theme_css(st.session_state.theme), unsafe_allow_html=True)
 
-# Auto-save player data
-if st.session_state.username:
+# Auto-save player data (with rate limiting)
+current_time = time.time()
+if st.session_state.username and (current_time - st.session_state.last_save_time > 1):  # Save at most once per second
     balance_change = st.session_state.game.balance - st.session_state.starting_balance
     st.session_state.stats['total_winnings'] = balance_change
 
     save_js = save_player_data()
     if save_js:
         st.markdown(save_js, unsafe_allow_html=True)
+        st.session_state.last_save_time = current_time
 
 game = st.session_state.game
 
@@ -690,32 +755,8 @@ with left_col:
         st.markdown("**🏆 TOP PLAYERS**")
         st.markdown('<div id="leaderboard-content">Loading leaderboard...</div>', unsafe_allow_html=True)
 
-        leaderboard_js = """
-        <script>
-        var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
-        var content = '';
-
-        if (leaderboard.length > 0) {
-            leaderboard.forEach((player, index) => {
-                var rank = index + 1;
-                var emoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
-                var winnings = player.stats.total_winnings;
-                var winningsColor = winnings >= 0 ? '#32CD32' : '#FF6B6B';
-                var games = player.stats.wins + player.stats.losses + player.stats.pushes;
-
-                content += `<div style="margin: 5px 0; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1);">
-                    <strong>${emoji} ${player.username}</strong><br>
-                    <small style="color: ${winningsColor};">$${winnings.toLocaleString()} • ${games} games</small>
-                </div>`;
-            });
-        } else {
-            content = '<div style="text-align: center; opacity: 0.7;">No players yet!</div>';
-        }
-
-        document.getElementById('leaderboard-content').innerHTML = content;
-        </script>
-        """
-        st.markdown(leaderboard_js, unsafe_allow_html=True)
+        # Load the auto-updating leaderboard display
+        st.markdown(load_leaderboard_display(), unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Clear data button
@@ -723,10 +764,13 @@ with left_col:
         if st.button("🗑️ Clear My Data", key="clear_data", use_container_width=True):
             clear_js = f"""
             <script>
-            localStorage.removeItem('blackjack_{st.session_state.username}');
-            var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
-            leaderboard = leaderboard.filter(p => p.username !== '{st.session_state.username}');
-            localStorage.setItem('blackjack_leaderboard', JSON.stringify(leaderboard));
+            (function() {{
+                localStorage.removeItem('blackjack_{st.session_state.username}');
+                var leaderboard = JSON.parse(localStorage.getItem('blackjack_leaderboard') || '[]');
+                leaderboard = leaderboard.filter(p => p.username !== '{st.session_state.username}');
+                localStorage.setItem('blackjack_leaderboard', JSON.stringify(leaderboard));
+                window.dispatchEvent(new Event('storage'));
+            }})();
             </script>
             """
             st.markdown(clear_js, unsafe_allow_html=True)
@@ -904,6 +948,14 @@ with main_col:
                 st.session_state.stats['pushes'] += 1
 
             st.session_state.stats_updated = True
+
+            # Force save after game ends
+            if st.session_state.username:
+                balance_change = game.balance - st.session_state.starting_balance
+                st.session_state.stats['total_winnings'] = balance_change
+                save_js = save_player_data()
+                if save_js:
+                    st.markdown(save_js, unsafe_allow_html=True)
 
         # Display results
         if game.game_result == "player_blackjack":
